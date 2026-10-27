@@ -1,0 +1,91 @@
+!
+!   Ver 9
+!   Import worklist from LIMS or 3rd partner
+!
+
+Name URS_ImportXML
+Local WkFolder$, ListFile$, FileName$, BaseName$
+Local ErrCode, HasFile,FileCount, i,NumFile  
+  
+  WkFolder$ = "C:\WKlist\"
+  ListFile$ = WkFolder$ + "filelist.txt"
+  
+
+! 1. execute Batch for sort XML file
+  If FileStat(mode, ListFile$)=1 Then    
+    Delete ListFile$, DONTASK
+  EndIf
+  
+  ExecWait WkFolder$ + "Xdir.bat"
+!  
+!!  If FileStat(mode, ListFile$) = 0 Then
+!!    Print "Done!! No XML files found in " + WkFolder$
+!!  EndIf
+   If _SEQUENCEIDLE = 0 or FileStat(mode, ListFile$) = 0 Then
+    Print "Sequence is running. Cannot import now. or no XML File"
+   Else
+ ! 2. sequence modify status
+  If _SEQUENCECHANGED = 1 Then 
+     SavecurrentSequence _SEQPATH$,_seqfile$[1:len(_seqfile$)-2]+time$(2,,ss)+".s",1
+     Print "Save Current Sequence !! "     
+  EndIf
+  
+  SequenceNew 
+  
+   ! 3. Read XML file from filelist.txt
+  HasFile = 0
+  NumFile = 0
+  Open ListFile$ For Input As #10
+    Input #10, FileName$ 
+    NumFile = Val(FileName$)
+!    Print Alert(FileName$,2)
+      If NumFile >0 Then
+      For i=1 To NumFile
+    
+        Input #10, FileName$
+!        Print Alert(val$(i)+" => "+FileName$,2)
+        If Len(FileName$) > 0 Then
+!          Print Alert("Pass  ",2)
+          HasFile = 1
+          BaseName$ = FileName$[1 : Len(FileName$)-4]          
+          Print "Importing: " + FileName$
+!          Print Alert(BaseName$,2)
+        ErrCode = XML_IMPORTWORKLIST(WkFolder$ + FileName$,1 , 1, 0, 0) !,"","",1)
+!        Print Alert("Err ==> "+Val$(ErrCode),2)
+        
+        If ErrCode > 0 Then
+          Copy WkFolder$ + FileName$, WkFolder$ + "Err\" + FileName$, DONTASK
+          Print "ERROR: " + FileName$ + " import failed. Code=" + Val$(ErrCode)
+        Else
+          Copy WkFolder$ + FileName$, WkFolder$ + "Bak\" + FileName$, DONTASK
+          SaveSequence _SEQPATH$, BaseName$ + "_" + Time$(2,,hhmmss) + ".s"
+        EndIf
+        Delete WkFolder$ + FileName$, DONTASK
+        EndIf
+      Next i
+      EndIf
+  Close #10
+            
+ EndIf
+!! Print "OKKK"
+ 
+ Delete ListFile$, DONTASK
+
+  ! 4.Import successful and execute sequence
+  If HasFile = 1 Then
+    StartSequence
+    Print "All XML imported. Sequence started."
+  Else
+    Print "filelist.txt is empty."
+  EndIf
+  
+  Print "OKKK"
+ 
+EndMacro
+
+
+Name URS_WKMenu
+  If TabHdrText$(_CONFIG, WINDOW, CurrentView) = "TOP" Then
+    MenuAdd "&WorkList","I&mport to Seq.","URS_ImportXML"
+  EndIf
+EndMacro
