@@ -1,0 +1,41 @@
+!
+! ChemStation Monitor
+! Writes a timestamped status log for the current ChemStation run.
+!
+
+Name URS_MonitorChemStation
+  Local LogFile$, RunState$, SeqPath$, SeqFile$, LogLine$
+
+  LogFile$ = "C:\WKlist\ChemStationMonitor.txt"
+  SeqPath$ = _SEQPATH$
+  SeqFile$ = _SEQFILE$
+
+  If _SEQUENCEIDLE = 0 Then
+    RunState$ = "RUNNING"
+  Else
+    RunState$ = "IDLE"
+  EndIf
+
+  LogLine$ = "[" + Date$(0) + " " + Time$(2,,hhmmss) + "] "
+  LogLine$ = LogLine$ + "Status=" + RunState$
+  LogLine$ = LogLine$ + "; SequenceChanged=" + Val$(_SEQUENCECHANGED)
+  LogLine$ = LogLine$ + "; SequenceIdle=" + Val$(_SEQUENCEIDLE)
+  LogLine$ = LogLine$ + "; SeqPath=" + SeqPath$
+  LogLine$ = LogLine$ + "; SeqFile=" + SeqFile$
+
+  Open LogFile$ For Append As #10
+    Print #10, LogLine$
+  Close #10
+
+  If _SEQUENCEIDLE = 0 Then
+    Print "ChemStation is running. Monitor log updated."
+  Else
+    Print "ChemStation is idle. Monitor log updated."
+  EndIf
+EndMacro
+
+Name URS_MonitorChemStationMenu
+  If TabHdrText$(_CONFIG, WINDOW, CurrentView) = "TOP" Then
+    MenuAdd "&Monitoring","&Log ChemStation Status","URS_MonitorChemStation"
+  EndIf
+EndMacro
